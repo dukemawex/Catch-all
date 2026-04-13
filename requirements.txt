@@ -1,0 +1,9 @@
+transformer_lens>=1.19.0
+sae_lens>=3.0.0
+torch>=2.0.0
+numpy
+matplotlib
+seaborn
+scikit-learn
+jupyter
+pandas
