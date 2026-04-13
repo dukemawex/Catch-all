@@ -54,19 +54,19 @@ mechinterp-phishing-probe/
 
 ### Notebook 1 — TransformerLens Exploratory Analysis
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dukemawex/Catch-all/blob/main/notebooks/01_transformerlens_exploration.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dukemawex/mechinterp-phishing-probe/blob/main/notebooks/01_transformerlens_exploration.ipynb)
 
 Using the `HookedTransformer` API from TransformerLens, we run all 10 phishing/benign prompt pairs through GPT-2 Small and cache every intermediate activation. For each pair we visualise attention patterns side-by-side (benign vs. phishing), compute per-layer residual stream L2 divergence, and aggregate (layer, head) attention divergence scores across all pairs to identify the top-3 most discriminative attention heads. Markdown cells frame findings in terms of *residual stream*, *attention circuits*, and *activation space* — the vocabulary of mechanistic interpretability research.
 
 ### Notebook 2 — Activation Patching
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dukemawex/Catch-all/blob/main/notebooks/02_activation_patching.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dukemawex/mechinterp-phishing-probe/blob/main/notebooks/02_activation_patching.ipynb)
 
 We apply causal activation patching to the three most divergent prompt pairs. For each pair, we systematically replace the residual stream of the benign (clean) run at every (layer, token-position) pair with the corresponding activation from the phishing (corrupt) run, measuring the resulting shift in the model's logit distribution. The resulting attribution matrix identifies the **social engineering signal layer** — the locus in GPT-2 Small's residual stream where phishing intent is most causally encoded. We also run an Isolation Forest on mean-pooled residual stream vectors, demonstrating unsupervised separation of the phishing activation distribution from the benign baseline. Together these results constitute a proof-of-concept for *latent-space evals*.
 
 ### Notebook 3 — SAE Feature Analysis
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dukemawex/Catch-all/blob/main/notebooks/03_sae_feature_analysis.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dukemawex/mechinterp-phishing-probe/blob/main/notebooks/03_sae_feature_analysis.ipynb)
 
 Using the SAELens library, we load a pretrained Sparse Autoencoder trained on GPT-2 Small's layer-8 residual stream (`blocks.8.hook_resid_post`). We encode all prompts through the SAE and identify the *phishing feature set*: SAE features with ≥2× higher mean activation on phishing prompts than benign. We assign semantic labels (urgency words, authority nouns, financial action verbs) to each phishing feature and visualise their co-activation structure. The analysis frames sparse interpretable features as *latent-space Indicators of Compromise (IoCs)* — directly bridging mechanistic interpretability with applied cybersecurity threat modelling.
 

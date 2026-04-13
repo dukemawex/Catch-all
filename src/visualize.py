@@ -27,7 +27,7 @@ FIGURE_DPI = 150
 FIGURE_STYLE = "whitegrid"
 
 
-def _save_or_show(fig: plt.Figure, save_path: Optional[str | Path]) -> None:
+def _save_or_show(fig: plt.Figure, save_path: Optional[Union[str, Path]]) -> None:
     """Save *fig* to *save_path* (creating parent dirs) or display inline."""
     if save_path is not None:
         save_path = Path(save_path)
@@ -49,7 +49,7 @@ def plot_attention_head_comparison(
     token_labels_benign: Optional[List[str]] = None,
     token_labels_phishing: Optional[List[str]] = None,
     title_prefix: str = "",
-    save_path: Optional[str | Path] = None,
+    save_path: Optional[Union[str, Path]] = None,
 ) -> None:
     """
     Plot benign vs. phishing attention patterns side-by-side for a single head.
@@ -118,7 +118,7 @@ def plot_divergence_curve(
     divergence_curve: np.ndarray,
     pair_index: int,
     tactic: str = "",
-    save_path: Optional[str | Path] = None,
+    save_path: Optional[Union[str, Path]] = None,
 ) -> None:
     """
     Plot the per-layer L2 divergence between benign and phishing residual streams.
@@ -158,7 +158,7 @@ def plot_divergence_curve(
 def plot_head_divergence_heatmap(
     head_divergence_matrix: np.ndarray,
     top_heads: Optional[List[Tuple[int, int, float]]] = None,
-    save_path: Optional[str | Path] = None,
+    save_path: Optional[Union[str, Path]] = None,
 ) -> None:
     """
     Plot a (n_layers × n_heads) heatmap of mean attention divergence scores.
@@ -215,7 +215,7 @@ def plot_patching_attribution(
     attribution_matrix: np.ndarray,
     token_labels: Optional[List[str]] = None,
     title: str = "Activation Patching Attribution",
-    save_path: Optional[str | Path] = None,
+    save_path: Optional[Union[str, Path]] = None,
 ) -> None:
     """
     Plot the (n_layers × seq_len) patching attribution heatmap.
@@ -255,7 +255,7 @@ def plot_patching_attribution(
 def plot_anomaly_score_distributions(
     benign_scores: np.ndarray,
     phishing_scores: np.ndarray,
-    save_path: Optional[str | Path] = None,
+    save_path: Optional[Union[str, Path]] = None,
 ) -> None:
     """
     Plot overlapping KDE distributions of Isolation Forest anomaly scores
@@ -296,7 +296,7 @@ def plot_sae_phishing_features(
     mean_activations_benign: np.ndarray,
     feature_labels: Optional[List[str]] = None,
     top_k: int = 15,
-    save_path: Optional[str | Path] = None,
+    save_path: Optional[Union[str, Path]] = None,
 ) -> None:
     """
     Bar chart comparing mean SAE feature activations for phishing vs. benign prompts.
