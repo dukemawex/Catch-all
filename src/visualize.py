@@ -10,7 +10,7 @@ figure is persisted to disk as a .png file (suitable for README embedding).
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
