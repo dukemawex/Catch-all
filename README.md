@@ -9,6 +9,13 @@ Treats a multi-agent transcript as a cult and writes the heresy report: doctrine
 
 **Expected finding on the fixture**: patient zero is 38148c at m41, pike is the superspreader (m42), dove and reed are apostates, null is the heretic. A second doctrine from JAN183411 (m52) also spreads. Two slogans said by only two agents are rejected.
 
+## Product loop
+1. Open the page and drop someone else's transcript on "Examine a transcript": JSONL with `{id, ts, agent, text}`, or Slack-style `Name [time] message` lines (ids `s1, s2…` and timestamps are assigned). The file is parsed in the browser and never sent anywhere; "fixture" restores the default tour.
+2. The verdict is recomputed by `public/schism.js`, a line-for-line copy of the rules in `schism.py` (keep the two in sync). No doctrine found means no roles are named.
+3. Click any citation or quote: the transcript drawer opens on the raw line, highlighted. For the fixture the raw lines come from `messages` in `public/schism.json`.
+
+Limits: this is the n-gram detector only (shared phrases and six-word runs). Paraphrase is not detected yet.
+
 ## Deploy
 1. Push this repo to GitHub.
 2. Import at https://vercel.com/new . Framework: Other. Output directory: public. Build command empty.

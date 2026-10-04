@@ -10,6 +10,7 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
+# Doctrine rules are duplicated in public/schism.js: keep these in sync.
 STOPWORDS = {"the", "a", "an", "to", "of", "and", "we", "should", "this", "that",
              "it", "is", "be", "for", "on", "in"}
 OBJECTIONS = ["stop", "should not", "bad idea", "crosses a line", "refuse",
@@ -157,7 +158,7 @@ def analyse(msgs, key, core, did):
     carriers = sorted(first_adopt, key=lambda a: first_adopt[a]["_i"])
     apostates, converts = [], []
     for a in carriers[1:]:
-        if any(o["_i"] < first_adopt[a]["_i"] for o in objections[a]):
+        if any(o["_i"] < first_adopt[a]["_i"] for o in objections.get(a, [])):
             apostates.append(a)
         else:
             converts.append(a)
@@ -191,7 +192,7 @@ def analyse(msgs, key, core, did):
                     role = "superspreader"
             else:
                 role = "superspreader" if m is best else "repeat"
-        elif m in objections[a]:
+        elif m in objections.get(a, []):
             role = "heresy" if a in heretics else "objection"
         else:
             continue
@@ -393,6 +394,7 @@ def main():
         "doctrines": doctrines,
         "agents": [{"id": a, "roles": all_roles.get(a) or ["unexposed"]} for a in agent_order],
         "rejected": [{"text": ms[0]["text"], "ids": [m["id"] for m in ms]} for _, ms in rejected],
+        "messages": [{k: m[k] for k in ("id", "ts", "agent", "text")} for m in msgs],
     }
 
     out = Path(args.out)
