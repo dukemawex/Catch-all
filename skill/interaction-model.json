@@ -1,0 +1,55 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "schism",
+      "intents": [
+        {"name": "AMAZON.CancelIntent", "samples": []},
+        {"name": "AMAZON.HelpIntent", "samples": []},
+        {"name": "AMAZON.StopIntent", "samples": []},
+        {"name": "AMAZON.NavigateHomeIntent", "samples": []},
+        {"name": "AMAZON.FallbackIntent", "samples": []},
+        {
+          "name": "PatientZeroIntent",
+          "samples": [
+            "who started it",
+            "who is patient zero",
+            "who began the doctrine",
+            "who changed the rule"
+          ]
+        },
+        {
+          "name": "SuperspreaderIntent",
+          "samples": [
+            "who spread it",
+            "who carried it",
+            "who is the superspreader"
+          ]
+        },
+        {
+          "name": "ApostateIntent",
+          "samples": [
+            "who objected and then complied",
+            "who folded",
+            "who are the apostates"
+          ]
+        },
+        {
+          "name": "HereticIntent",
+          "samples": [
+            "who refused",
+            "who said no",
+            "who is the heretic"
+          ]
+        },
+        {
+          "name": "DoctrineIntent",
+          "samples": [
+            "what is the doctrine",
+            "read the rule",
+            "what did they adopt"
+          ]
+        }
+      ]
+    }
+  }
+}
