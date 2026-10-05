@@ -24,5 +24,16 @@ Limits: this is the n-gram detector only (shared phrases and six-word runs). Par
 ## Submission
 Write-up: `public/schism.md`. Repo: this repo. Optional result: the patient zero call (38148c, [m41]).
 
-## Alexa+ simulation
-Open public/alexa.html. Ask who started it, who spread it, who folded, who refused. Citations open the raw line. Simulated Alexa+ experience, not the Alexa service. MIT licensed.
+## Amazon Developer Hackathon
+Primary track: **Alexa+, simulated experience**. Mini: **Open Source** (MIT, see `LICENSE`).
+
+`public/alexa.html` is a web app that behaves like a spoken Alexa+ session over the SCHISM verdict, with the infection map beside it. It is a simulation: **no Alexa SDK is used, no Amazon account or AWS call is involved, and this is not the production Alexa service.** Open it on the Vercel URL, or locally with `python -m http.server -d public` then `http://localhost:8000/alexa.html` (opening the file directly also works). Press "start session" to turn the voice on (browser `speechSynthesis`); the mic uses the browser's `SpeechRecognition` where available, and typing always works. "Alexa" before the question is optional. The intent logic is `public/alexa.js`; it reads only `schism.json`.
+
+The five questions a judge can ask (answers on the fixture):
+1. "Alexa, who is patient zero?" → 38148c, message m41, quoted verbatim.
+2. "Alexa, who spread it?" → pike, message m42, 3 later carriers.
+3. "Alexa, who objected and complied?" → dove (m44 → m65) and reed (m45 → m66).
+4. "Alexa, who refused?" → null, message m46, last word m79.
+5. "Alexa, read the doctrine." → the first doctrine and its first line, m41.
+
+"Open citation m41" shows the line and moves the map to that moment. Every answer names its message id, and a role the detector did not compute is reported as absent. The fixture is synthetic, not a real incident.

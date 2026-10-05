@@ -401,7 +401,8 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     (out / "schism.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     write_md(data, byid, rejected, out / "schism.md")
-    inject(out / "index.html", data)
+    for page in ("index.html", "alexa.html"):
+        inject(out / page, data)
     d1 = doctrines[0]
     print(f"d1 '{d1['label']}': patient zero {d1['patient_zero']['agent']} [{d1['patient_zero']['id']}], "
           f"superspreader {d1['superspreader']['agent']} [{d1['superspreader']['id']}], "

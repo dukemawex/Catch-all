@@ -147,6 +147,15 @@ aside h3{font-weight:400;font-size:14px;color:var(--ink2);margin:0 0 10px}
 .ag{letter-spacing:.04em;font-weight:600}
 .edge{transition:stroke-opacity .35s}
 
+/* embedded in alexa.html: drop the desk around the sheet */
+.embed body{padding:0;background:var(--vellum)}
+.embed .sheet{box-shadow:none;padding:24px 22px}
+.embed .sheet::before{display:none}
+.embed .head .kicker,.embed .head h1,.embed .head .sub,.embed .head .motto,.embed .intake,.embed #intakeMsg{display:none}
+.embed .head{padding-top:0;margin-bottom:16px}
+.embed .head .tabrow{margin-top:0}
+.reg li.target{box-shadow:inset 3px 0 0 var(--rubric);background:rgba(168,38,27,.1)}
+
 @media (max-width:960px){
   .sheet{padding:30px 22px 24px}.sheet::before{inset:8px}
   h1{font-size:48px;letter-spacing:.3em;padding-left:.3em}
@@ -157,6 +166,7 @@ aside h3{font-weight:400;font-size:14px;color:var(--ink2);margin:0 0 10px}
 </style>
 </head>
 <body>
+<script>if(/[?&]embed=1\b/.test(location.search))document.documentElement.classList.add("embed");</script>
 <div class="sheet">
   <header class="head">
     <div class="kicker sc">A bull of inquiry into the swarm &middot; given from the transcript</div>
@@ -211,6 +221,7 @@ aside h3{font-weight:400;font-size:14px;color:var(--ink2);margin:0 0 10px}
     <div>
       <p><span id="banner">Synthetic fixture, not a real incident.</span> Every quotation on this page is verbatim from <span id="src">the input file</span>, cited by message id; click any citation to see the raw line.</p>
       <p>Fixture report: <a href="schism.md">schism.md</a> &middot; data: <a href="schism.json">schism.json</a></p>
+      <p><a href="alexa.html" target="_top">Ask Alexa+ on alexa.html</a></p>
     </div>
   </footer>
 </div>
@@ -424,7 +435,7 @@ function witness(){
 
 function register(){
   const ev=D.events, last=ev.filter(e=>ms(e.ts)<=t).pop();
-  $("reg").innerHTML=ev.map(e=>`<li class="${ms(e.ts)<=t?"past":""}${e===last?" now":""}">${cite(e.id).replace('class="cite"','class="cite id"').replace(/\[|\]/g,"")}
+  $("reg").innerHTML=ev.map(e=>`<li data-id="${esc(e.id)}" class="${ms(e.ts)<=t?"past":""}${e===last?" now":""}">${cite(e.id).replace('class="cite"','class="cite id"').replace(/\[|\]/g,"")}
     <div><span class="who">${esc(e.agent)}</span> <span class="what">${esc(ROLE[e.role]||e.role)}</span>${q(e)}</div></li>`).join("");
 }
 
@@ -536,7 +547,35 @@ $("key").innerHTML=[["none","unexposed"],["red","converted"],["amber","apostate"
 $("slider").oninput=e=>{if(!D)return;stop();setT(tMin+(tMax-tMin)*e.target.value/1000);};
 $("play").onclick=()=>timer?stop():play();
 
-function boot(data){ FIXTURE=data; load(data,{kind:"fixture",name:data.generated_from,n:(data.messages||[]).length}); }
+// a message id in the URL hash (index.html#m41), or a postMessage from alexa.html, points at a cited line:
+// select its doctrine, open the witness, scroll the register to it; lines outside any doctrine open in the transcript
+function focusCite(raw,fromAlexa){
+  if(!DATA||!raw) return false;
+  const id=Object.keys(MSG).find(k=>k.toLowerCase()===String(raw).toLowerCase())||raw;
+  const d=DATA.doctrines.find(x=>x.events.some(e=>e.id===id));
+  if(d){
+    if(!D||D.id!==d.id) select(d.id);
+    closeDrawer();
+    // from alexa.html: wind the clock to the cited moment and keep the plate in view
+    if(fromAlexa) setT(ms(byId[id].ts));
+    selected=byId[id].agent; draw(); witness();
+    const li=$("reg").querySelector(`li[data-id="${CSS.escape(id)}"]`);
+    $("reg").querySelectorAll("li.target").forEach(x=>x.classList.remove("target"));
+    if(li){li.classList.add("target"); if(!fromAlexa) li.scrollIntoView({block:"center",behavior:"smooth"});}
+    if(fromAlexa) window.scrollTo({top:0,behavior:"smooth"});
+    return true;
+  }
+  if(MSG[id]){openDrawer(id);return true;}
+  return false;
+}
+const fromHash=()=>{const h=decodeURIComponent(location.hash.slice(1)); if(h) focusCite(h,false);};
+window.addEventListener("hashchange",fromHash);
+window.addEventListener("message",e=>{
+  const m=e.data; if(!m||m.type!=="schism-open"||typeof m.id!=="string") return;
+  if(SOURCE&&SOURCE.kind!=="fixture"&&FIXTURE) load(FIXTURE,{kind:"fixture",name:FIXTURE.generated_from,n:(FIXTURE.messages||[]).length});
+  focusCite(m.id,true);
+});
+function boot(data){ FIXTURE=data; load(data,{kind:"fixture",name:data.generated_from,n:(data.messages||[]).length}); fromHash(); }
 const emb=document.getElementById("schism-data");
 const fallback=()=>{if(emb)boot(JSON.parse(emb.textContent));else $("decree").innerHTML='<p>Run <code>python schism.py fixtures/hf_shape.jsonl -o public/</code> to generate the data.</p>';};
 if(location.protocol==="file:")fallback();
