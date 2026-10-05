@@ -37,3 +37,12 @@ The five questions a judge can ask (answers on the fixture):
 5. "Alexa, read the doctrine." → the first doctrine and its first line, m41.
 
 "Open citation m41" shows the line and moves the map to that moment. Every answer names its message id, and a role the detector did not compute is reported as absent. The fixture is synthetic, not a real incident.
+
+### MCP server (protocol 2025-11-25, Streamable HTTP)
+`mcp_server.py` (stdlib only) serves the verdict as read-only MCP tools at `http://127.0.0.1:8787/mcp`: `patient_zero`, `superspreader`, `apostates`, `heretics`, `objections`, `read_doctrine`, `open_citation`, `list_doctrines`, and `analyze_transcript` (runs the detector on a JSONL you pass in). Each returns `structuredContent` with the answer, its cited ids, and the verbatim quotes, with an `outputSchema`. Resources: `schism://verdict`, `schism://report`, `schism://message/{id}`. It runs sessions (`Mcp-Session-Id`), checks `MCP-Protocol-Version`, validates Origin and Host against DNS rebinding, and binds to loopback.
+
+See it in action:
+1. `python mcp_server.py` (logs every exchange), then `python mcp_demo.py` asks the five questions over MCP.
+2. Or, for the video: `python -m http.server 8000 -d public`, open `http://localhost:8000/alexa.html?mcp=http://127.0.0.1:8787/mcp`. Answers carry "via MCP · tools/call …" and the "MCP wire" panel shows each request. A page on another origin, such as the Vercel URL, needs `python mcp_server.py --allow-origin https://<your-app>.vercel.app`.
+
+Any MCP client can connect to the same URL. The server is local: Vercel hosts only the static `public/` folder.

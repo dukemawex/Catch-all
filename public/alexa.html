@@ -81,6 +81,23 @@ form{display:flex;gap:12px;align-items:center;margin-top:14px}
 .card blockquote{margin:6px 0 8px;font-style:italic}
 .card .meta{font-size:14px;color:var(--ink2)}
 
+/* answer source: this page, or the SCHISM MCP server */
+.source{margin-top:18px;padding:10px 14px;border:1px dashed var(--hair);font-size:14px;color:var(--ink2)}
+.source .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.source label{cursor:pointer}
+.source input[type=radio]{accent-color:var(--rubric)}
+#mcpurl{flex:1;min-width:200px;font:13px ui-monospace,Menlo,Consolas,monospace;padding:5px 8px;border:1px solid var(--hair);background:#f7f1e4;color:var(--ink)}
+#mcpurl:focus-visible{outline:1px dotted var(--rubric);outline-offset:2px}
+#mcpstate{margin-top:6px;font-style:italic}
+#mcpstate.ok{color:var(--lapis)} #mcpstate.bad{color:var(--rubric)}
+.via{display:block;margin-top:4px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--ink2)}
+details.wire{margin-top:12px;font-size:14px}
+details.wire summary{cursor:pointer;color:var(--ink2);font-variant:small-caps;letter-spacing:.09em}
+#wire{list-style:none;margin:6px 0 0;padding:6px 10px;max-height:190px;overflow:auto;border:1px solid var(--hair);background:rgba(255,248,230,.45);
+  font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--ink2)}
+#wire li{white-space:pre-wrap;word-break:break-all}
+#wire .out{color:var(--lapis)} #wire .in{color:var(--ink)} #wire .err{color:var(--rubric)}
+
 footer{border-top:1px solid var(--hair);margin-top:28px;padding-top:16px;font-size:14px;color:var(--ink2)}
 footer p{margin:0 0 4px}
 
@@ -131,6 +148,16 @@ footer p{margin:0 0 4px}
         <button type="button" class="btn" data-q="Alexa, who refused?">who refused</button>
         <button type="button" class="btn" data-q="Alexa, read the doctrine.">read the doctrine</button>
         <button type="button" class="btn" data-q="Alexa, open citation m41.">open citation m41</button>
+      </div>
+
+      <div class="source" id="source">
+        <div class="row"><span class="sc">Answers from</span>
+          <label><input type="radio" name="src" value="page" checked> this page</label>
+          <label><input type="radio" name="src" value="mcp"> SCHISM MCP server</label>
+          <input id="mcpurl" type="url" value="http://127.0.0.1:8787/mcp" aria-label="MCP server endpoint" spellcheck="false">
+        </div>
+        <div id="mcpstate">Run <code>python mcp_server.py</code>, then choose the MCP server. Protocol 2025-11-25, Streamable HTTP.</div>
+        <details class="wire" id="wirebox"><summary>MCP wire</summary><ol id="wire"></ol></details>
       </div>
 
       <div class="card" id="card" hidden>
@@ -191,23 +218,119 @@ function speak(text){
 }
 
 // a cited line: show its own text here, point the map at it, and link the full page
-function openCite(id){
-  const m=(DATA&&DATA.messages||[]).find(x=>x.id===id);
+function openCite(id,fromTool){
+  const m=(DATA&&DATA.messages||[]).find(x=>x.id===id)||fromTool;
   if(!m) return;
   $("card").hidden=false;
   $("cardid").textContent=`message ${m.id}`;
   $("cardtext").textContent=`“${m.text}”`;
-  $("cardwho").textContent=`${m.agent} · ${m.ts}`;
+  $("cardwho").textContent=[m.agent,m.ts].filter(Boolean).join(" · ");
   $("cardlink").href=`index.html#${encodeURIComponent(m.id)}`;
   try{ $("map").contentWindow.postMessage({type:"schism-open",id:m.id},"*"); }catch(e){}
+}
+
+// ---------- MCP client: Streamable HTTP, protocol 2025-11-25 ----------
+
+const PROTOCOL="2025-11-25";
+const TOOL_FOR={patient_zero:"patient_zero",superspreader:"superspreader",apostates:"apostates",heretics:"heretics",
+  objected:"objections",doctrine:"read_doctrine",citation:"open_citation"};
+const mcp={url:null,sid:null,version:null,nextId:1,tools:[],ready:false};
+
+function wire(cls,line){
+  const li=document.createElement("li"); li.className=cls; li.textContent=line;
+  const w=$("wire"); w.appendChild(li); while(w.children.length>60) w.firstChild.remove(); w.scrollTop=w.scrollHeight;
+}
+function mcpState(text,cls){ const e=$("mcpstate"); e.textContent=text; e.className=cls||""; }
+
+async function rpc(method,params,isNotification){
+  const msg={jsonrpc:"2.0",method}; if(params) msg.params=params; if(!isNotification) msg.id=mcp.nextId++;
+  const headers={"Content-Type":"application/json","Accept":"application/json, text/event-stream"};
+  if(mcp.sid) headers["Mcp-Session-Id"]=mcp.sid;
+  if(mcp.version) headers["MCP-Protocol-Version"]=mcp.version;
+  const shown=method==="tools/call"?`tools/call ${params.name} ${JSON.stringify(params.arguments||{})}`:method;
+  wire("out",`→ POST ${shown}`);
+  const res=await fetch(mcp.url,{method:"POST",headers,body:JSON.stringify(msg)});
+  const sid=res.headers.get("Mcp-Session-Id"); if(sid) mcp.sid=sid;
+  if(isNotification){ wire(res.ok?"in":"err",`← ${res.status}`); return null; }
+  const ctype=res.headers.get("Content-Type")||"";
+  let reply=null;
+  if(ctype.includes("text/event-stream")){
+    // a server may answer as an SSE stream; take the event that carries our response
+    for(const block of (await res.text()).split(/\r?\n\r?\n/)){
+      const data=block.split(/\r?\n/).filter(l=>l.startsWith("data:")).map(l=>l.slice(5).trim()).join("\n");
+      if(!data) continue; try{ const j=JSON.parse(data); if(j.id===msg.id){reply=j;break;} }catch(e){}
+    }
+  } else if(ctype.includes("application/json")) reply=await res.json();
+  if(!reply){ wire("err",`← ${res.status} (no JSON-RPC reply)`); throw new Error(`HTTP ${res.status}`); }
+  if(reply.error){ wire("err",`← ${res.status} error ${reply.error.code} ${reply.error.message}`); const e=new Error(reply.error.message); e.status=res.status; throw e; }
+  const r=reply.result||{};
+  let note=`← ${res.status} ${ctype.split(";")[0]}`;
+  if(method==="initialize") note+=` · protocol ${r.protocolVersion} · session ${(mcp.sid||"").slice(0,8)}…`;
+  if(method==="tools/list") note+=` · ${(r.tools||[]).length} tools`;
+  if(method==="tools/call") note+=r.isError?" · tool error":` · cites ${((r.structuredContent||{}).cites||[]).join(", ")||"-"}`;
+  wire("in",note);
+  return r;
+}
+
+async function mcpConnect(){
+  mcp.url=$("mcpurl").value.trim(); mcp.sid=null; mcp.version=null; mcp.ready=false;
+  $("wirebox").open=true;
+  mcpState(`Connecting to ${mcp.url}…`);
+  try{
+    const init=await rpc("initialize",{protocolVersion:PROTOCOL,capabilities:{},
+      clientInfo:{name:"schism-alexa-sim",title:"SCHISM simulated Alexa+",version:"0.4.0"}});
+    mcp.version=init.protocolVersion;
+    await rpc("notifications/initialized",null,true);
+    mcp.tools=(await rpc("tools/list",{})).tools||[];
+    mcp.ready=true;
+    mcpState(`Connected: ${init.serverInfo&&init.serverInfo.title||"MCP server"} ${init.serverInfo&&init.serverInfo.version||""}, protocol ${mcp.version}, ${mcp.tools.length} tools. Answers now come from tools/call.`,"ok");
+  }catch(e){
+    mcpState(`Could not reach ${mcp.url}: ${e.message}. Start it with python mcp_server.py, and open this page over http://localhost (a file:// page or another origin needs --allow-origin).`,"bad");
+  }
+}
+async function mcpDisconnect(){
+  if(mcp.sid&&mcp.url){ try{ wire("out","→ DELETE session"); const r=await fetch(mcp.url,{method:"DELETE",headers:{"Mcp-Session-Id":mcp.sid,"MCP-Protocol-Version":mcp.version||PROTOCOL}}); wire("in",`← ${r.status}`);}catch(e){} }
+  mcp.sid=null; mcp.ready=false;
+  mcpState("Answering on this page. Choose the MCP server to route questions through tools/call.");
+}
+document.querySelectorAll('input[name="src"]').forEach(r=>r.addEventListener("change",()=>{
+  if(r.checked&&r.value==="mcp") mcpConnect(); else if(r.checked) mcpDisconnect();
+}));
+$("mcpurl").addEventListener("change",()=>{ if(document.querySelector('input[name="src"]:checked').value==="mcp") mcpConnect(); });
+
+async function askMcp(c){
+  const name=TOOL_FOR[c.intent];
+  const args=name==="open_citation"?{id:c.id}:(c.doctrine?{doctrine:c.doctrine}:{});
+  let r;
+  try{ r=await rpc("tools/call",{name,arguments:args}); }
+  catch(e){
+    if(e.status===404){ await mcpConnect(); if(mcp.ready) return askMcp(c); }
+    turn("ax",esc(`The MCP server did not answer (${e.message}). Nothing was said in its place.`)); return;
+  }
+  const via=`<span class="via">via MCP · tools/call ${esc(name)} · session ${esc((mcp.sid||"").slice(0,8))}…</span>`;
+  const sc=r.structuredContent;
+  if(r.isError||!sc){
+    const msg=(r.content||[]).map(x=>x.text||"").join(" ");
+    turn("ax",esc(msg||"The tool reported an error.")+via); speak(msg); return;
+  }
+  turn("ax",render(sc.parts||[{t:sc.answer}])+via);
+  speak(sc.answer);
+  const target=sc.open||(sc.cites||[])[0];
+  if(target){
+    const qp=(sc.parts||[]).find(p=>p.quote&&p.quote.id===target);
+    openCite(target,qp?{id:target,text:qp.quote.text}:null);
+  }
 }
 
 function ask(text){
   text=String(text||"").trim(); if(!text) return;
   turn("you",esc(text));
   if(!DATA){turn("ax","The verdict has not loaded yet.");return;}
-  const r=SchismAlexa.respond(DATA,text,state);
-  turn("ax",render(r.parts));
+  const c=SchismAlexa.classify(DATA,text,state);
+  if(mcp.ready&&TOOL_FOR[c.intent]) return askMcp(c);
+  const r=SchismAlexa.answer(DATA,c);
+  const wantMcp=document.querySelector('input[name="src"]:checked').value==="mcp";
+  turn("ax",render(r.parts)+(wantMcp?`<span class="via">${mcp.ready?"answered on this page: not a verdict question":"MCP server not connected: answered on this page"}</span>`:""));
   speak(r.speech);
   if(r.open) openCite(r.open);
   else if(r.cites&&r.cites.length) openCite(r.cites[0]);
@@ -245,6 +368,9 @@ if(Recognition){
   $("mic").disabled=true; $("mic").title="Speech recognition is not available in this browser";
   $("micnote").textContent="This browser has no speech recognition, so type the question. Replies are still spoken once the session starts.";
 }
+
+const pre=new URLSearchParams(location.search).get("mcp");
+if(pre){ $("mcpurl").value=pre; document.querySelector('input[name="src"][value="mcp"]').checked=true; mcpConnect(); }
 
 turn("ax",esc("Start the session to turn the voice on, or just type. You can begin with “Alexa” or ask the question directly."));
 

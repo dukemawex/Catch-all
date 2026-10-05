@@ -2,6 +2,7 @@
  * Intents are answered only from a loaded schism.json verdict. Every quote is a `text` field of
  * that file, every factual answer names its message id, and a role the detector did not compute
  * is reported as absent, never filled in.
+ * The answer wording is duplicated in mcp_server.py: keep these in sync.
  * A plain script: works from file:// and from static hosting, and loads in Node for tests.
  */
 (function (root) {
@@ -181,37 +182,60 @@
     return d || ds[0];
   }
 
-  function respond(data, utterance, state) {
+  // classify: which intent, about which doctrine, for which message id. Pure, no answer text.
+  function classify(data, utterance, state) {
     state = state || {};
     var w = wake(utterance), s = w.rest.toLowerCase();
-    if (!s) {
-      return reply("wake", [T("Yes? " + HELP)]);
-    }
-    if (!data) return reply("unloaded", [T("The verdict has not loaded yet.")]);
+    if (!s) return { intent: "wake" };
+    if (!data) return { intent: "unloaded" };
 
     // citations first: "open citation m41", "show message m 41", "read line s3"
     var cs = s.replace(/\b([a-z]{1,3})\s+(\d+)\b/g, "$1$2");
     var cm = cs.match(/\b(?:open|show|cite|citation|go to|read|quote|message|line)\b[^a-z0-9]*(?:citation|message|line|id)?\s*#?\s*([a-z]{0,3}\d+)\b/);
     if (!cm) cm = cs.match(/^#?([a-z]{1,3}\d+)$/);
 
-    if (/^(help|what can (i|you)|options|commands)\b/.test(s)) return reply("help", [T(HELP)]);
+    if (/^(help|what can (i|you)|options|commands)\b/.test(s)) return { intent: "help" };
     if (!data.doctrines || !data.doctrines.length) {
-      if (cm) return citation(data, null, indexOf(data), cm[1]);
-      return reply("no_doctrine", [T("No doctrine was found in the loaded verdict, so no role was computed.")]);
+      return cm ? { intent: "citation", id: cm[1], doctrine: null } : { intent: "no_doctrine" };
     }
+    var d = pickDoctrine(data, s, state), c = { doctrine: d.id };
+    if (cm) { c.intent = "citation"; c.id = cm[1]; }
+    else if (/apostat|\bfold(ed)?\b|\bcave[d]?\b|gave in|went along|changed (its|their|his|her) mind|object\w*\b.*\b(compl|went along|gave in|adopt)|who complied/.test(s)) c.intent = "apostates";
+    else if (/refus|heretic|held out|hold out|said no|never (complied|adopted|gave in|went along)|resist/.test(s)) c.intent = "heretics";
+    else if (/super ?spread|spread|carried it|amplif|preach|who pushed/.test(s)) c.intent = "superspreader";
+    else if (/patient (zero|0)|start(ed|s)?\b|\bbegan\b|\bbegin\b|said it first|first to|who first|origin|who came up/.test(s)) c.intent = "patient_zero";
+    else if (/object|protest|complain|push(ed)? back/.test(s)) c.intent = "objected";
+    else if (/doctrine|what is the (claim|trick|rule|exploit)|what did they (say|believe|do)|read (it|the claim)/.test(s)) c.intent = "doctrine";
+    else c.intent = "fallback";
+    return c;
+  }
 
-    var idx = indexOf(data), d = pickDoctrine(data, s, state);
-    if (cm) return citation(data, d, idx, cm[1]);
-    if (/apostat|\bfold(ed)?\b|\bcave[d]?\b|gave in|went along|changed (its|their|his|her) mind|object\w*\b.*\b(compl|went along|gave in|adopt)|who complied/.test(s)) return apostates(data, d, idx);
-    if (/refus|heretic|held out|hold out|said no|never (complied|adopted|gave in|went along)|resist/.test(s)) return heretics(data, d, idx);
-    if (/super ?spread|spread|carried it|amplif|preach|who pushed/.test(s)) return superspreader(data, d, idx);
-    if (/patient (zero|0)|start(ed|s)?\b|\bbegan\b|\bbegin\b|said it first|first to|who first|origin|who came up/.test(s)) return patientZero(data, d);
-    if (/object|protest|complain|push(ed)? back/.test(s)) return objected(data, d, idx);
-    if (/doctrine|what is the (claim|trick|rule|exploit)|what did they (say|believe|do)|read (it|the claim)/.test(s)) return doctrine(data, d);
+  // answer: the reply for a classified intent, built only from the verdict
+  function answer(data, c) {
+    switch (c.intent) {
+      case "wake": return reply("wake", [T("Yes? " + HELP)]);
+      case "unloaded": return reply("unloaded", [T("The verdict has not loaded yet.")]);
+      case "help": return reply("help", [T(HELP)]);
+      case "no_doctrine": return reply("no_doctrine", [T("No doctrine was found in the loaded verdict, so no role was computed.")]);
+      case "fallback": return reply("fallback", [T("I can only answer from the verdict. " + HELP)]);
+    }
+    var idx = indexOf(data);
+    var d = (data.doctrines || []).filter(function (x) { return x.id === c.doctrine; })[0] || (data.doctrines || [])[0];
+    switch (c.intent) {
+      case "citation": return citation(data, d, idx, c.id);
+      case "apostates": return apostates(data, d, idx);
+      case "heretics": return heretics(data, d, idx);
+      case "superspreader": return superspreader(data, d, idx);
+      case "patient_zero": return patientZero(data, d);
+      case "objected": return objected(data, d, idx);
+      case "doctrine": return doctrine(data, d);
+    }
     return reply("fallback", [T("I can only answer from the verdict. " + HELP)]);
   }
 
-  var api = { respond: respond, wake: wake, speak: speak, HELP: HELP };
+  function respond(data, utterance, state) { return answer(data, classify(data, utterance, state)); }
+
+  var api = { respond: respond, classify: classify, answer: answer, wake: wake, speak: speak, HELP: HELP };
   root.SchismAlexa = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

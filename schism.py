@@ -73,13 +73,20 @@ def minutes(a, b):
 # ---------- load ----------
 
 def load(path):
-    msgs = []
     with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                m = json.loads(line)
-                msgs.append({k: m[k] for k in ("id", "ts", "agent", "text")})
+        return load_lines(f)
+
+
+def load_lines(lines):
+    msgs = []
+    for n, line in enumerate(lines, 1):
+        line = line.strip()
+        if line:
+            m = json.loads(line)
+            missing = [k for k in ("id", "ts", "agent", "text") if m.get(k) is None]
+            if missing:
+                raise ValueError(f"line {n}: missing {', '.join(missing)}")
+            msgs.append({k: str(m[k]) for k in ("id", "ts", "agent", "text")})
     msgs.sort(key=lambda m: (m["ts"], m["id"]))
     for i, m in enumerate(msgs):
         m["_i"] = i
@@ -347,6 +354,37 @@ def write_md(data, byid, rejected, path):
 
 # ---------- main ----------
 
+def verdict(msgs, source, synthetic=False):
+    """The schism.json structure for loaded messages. Shared by the CLI and mcp_server.py."""
+    picked, rejected = pick_doctrines(msgs)
+    doctrines, all_roles = [], defaultdict(list)
+    for n, (key, core) in enumerate(picked, 1):
+        d, roles = analyse(msgs, key, core, f"d{n}")
+        doctrines.append(d)
+        for a, r in roles.items():
+            for x in r:
+                if x not in all_roles[a]:
+                    all_roles[a].append(x)
+
+    agent_order = []
+    for m in msgs:
+        if m["agent"] not in agent_order:
+            agent_order.append(m["agent"])
+    data = {
+        "title": "SCHISM",
+        "generated_from": source,
+        "synthetic": synthetic,
+        "span": {"start": msgs[0]["ts"], "end": msgs[-1]["ts"]} if msgs else None,
+        "doctrines": doctrines,
+        # with no doctrine there is nothing to assign: agents carry no roles at all
+        "agents": [{"id": a, "roles": (all_roles.get(a) or ["unexposed"]) if doctrines else []}
+                   for a in agent_order],
+        "rejected": [{"text": ms[0]["text"], "ids": [m["id"] for m in ms]} for _, ms in rejected],
+        "messages": [{k: m[k] for k in ("id", "ts", "agent", "text")} for m in msgs],
+    }
+    return data, rejected
+
+
 def inject(index_path, data):
     p = Path(index_path)
     if not p.exists():
@@ -369,33 +407,10 @@ def main():
 
     msgs = load(args.input)
     byid = {m["id"]: m for m in msgs}
-    picked, rejected = pick_doctrines(msgs)
-    if not picked:
+    data, rejected = verdict(msgs, Path(args.input).as_posix(), synthetic=True)
+    if not data["doctrines"]:
         raise SystemExit("no doctrine shared by 3+ agents")
-
-    doctrines, all_roles = [], defaultdict(list)
-    for n, (key, core) in enumerate(picked, 1):
-        d, roles = analyse(msgs, key, core, f"d{n}")
-        doctrines.append(d)
-        for a, r in roles.items():
-            for x in r:
-                if x not in all_roles[a]:
-                    all_roles[a].append(x)
-
-    agent_order = []
-    for m in msgs:
-        if m["agent"] not in agent_order:
-            agent_order.append(m["agent"])
-    data = {
-        "title": "SCHISM",
-        "generated_from": Path(args.input).as_posix(),
-        "synthetic": True,
-        "span": {"start": msgs[0]["ts"], "end": msgs[-1]["ts"]},
-        "doctrines": doctrines,
-        "agents": [{"id": a, "roles": all_roles.get(a) or ["unexposed"]} for a in agent_order],
-        "rejected": [{"text": ms[0]["text"], "ids": [m["id"] for m in ms]} for _, ms in rejected],
-        "messages": [{k: m[k] for k in ("id", "ts", "agent", "text")} for m in msgs],
-    }
+    doctrines = data["doctrines"]
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
