@@ -16,3 +16,6 @@ Treats a multi-agent transcript as a cult and writes the heresy report: doctrine
 
 ## Submission
 Write-up: `public/schism.md`. Repo: this repo. Optional result: the patient zero call (38148c, [m41]).
+
+## Alexa+ simulation
+Open public/alexa.html. Ask who started it, who spread it, who folded, who refused. Citations open the raw line. Simulated Alexa+ experience, not the Alexa service. MIT licensed.

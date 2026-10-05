@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCHISM — simulated Alexa+</title>
+<meta name="description" content="Simulated Alexa+ experience over a swarm doctrine. Not the Alexa service.">
+<style>
+:root{--desk:#1b1612;--vellum:#efe5cf;--ink:#231a12;--ink2:#5a4a39;--hair:#bfae8d;--rubric:#a8261b;--lapis:#1f4689;--ochre:#b07a12}
+*{box-sizing:border-box}
+html{background:var(--desk)}
+body{margin:0;color:var(--ink);font:17px/1.55 "Iowan Old Style",Palatino,Georgia,serif;background:radial-gradient(ellipse at 50% 0,#2a221b 0,var(--desk) 70%);padding:28px 16px 40px}
+a{color:var(--rubric)}
+.sheet{max-width:1100px;margin:0 auto;background:var(--vellum);padding:36px 40px 28px;position:relative;box-shadow:0 30px 60px rgba(0,0,0,.55), inset 0 0 120px rgba(120,84,30,.22)}
+.sheet::before{content:"";position:absolute;inset:14px;border:1px solid var(--hair);outline:1px solid var(--hair);outline-offset:4px;pointer-events:none}
+.sc{font-variant:small-caps;letter-spacing:.08em}
+.head{text-align:center;border-bottom:1px solid var(--hair);padding-bottom:14px;margin-bottom:18px}
+h1{margin:4px 0 0;font-weight:400;font-size:42px;letter-spacing:.28em;color:var(--rubric);padding-left:.28em}
+.sub{font-style:italic;color:var(--ink2)}
+.warn{font-size:14px;color:var(--rubric);margin-top:8px}
+.cols{display:grid;grid-template-columns:1.1fr .9fr;gap:28px}
+.orb{width:72px;height:72px;border-radius:50%;margin:8px auto 12px;border:1px solid var(--ink);background:radial-gradient(circle at 40% 35%,#f4ead4,#c4b294 60%,#8a7352);box-shadow:inset 0 0 0 6px rgba(168,38,27,.15)}
+.orb.on{box-shadow:0 0 0 6px rgba(168,38,27,.25), inset 0 0 0 6px rgba(168,38,27,.35)}
+#log{height:340px;overflow:auto;border:1px solid var(--hair);padding:12px 14px;background:rgba(255,248,230,.45);font-size:16px}
+.turn{margin:0 0 10px}
+.turn b{font-weight:600}
+.you b{color:var(--lapis)}
+.ax b{color:var(--rubric)}
+.cite{color:var(--rubric);cursor:pointer;border-bottom:1px dotted var(--rubric)}
+form{display:flex;gap:8px;margin-top:10px}
+input[type=text]{flex:1;font:inherit;padding:8px 10px;border:1px solid var(--ink);background:#f7f1e4;color:var(--ink)}
+button{font:inherit;background:transparent;border:1px solid var(--rubric);color:var(--rubric);padding:8px 12px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:1px dotted var(--rubric);outline-offset:2px}
+.prompts{font-size:14px;color:var(--ink2);margin-top:8px}
+.prompts button{border:0;padding:0 8px 0 0;color:var(--lapis);text-decoration:underline}
+#maplink{display:block;margin-top:16px}
+#drawer{display:none;margin-top:16px;border:1px solid var(--rubric);padding:12px 14px;background:rgba(168,38,27,.04)}
+#drawer.open{display:block}
+#drawer .id{color:var(--rubric)}
+footer{border-top:1px solid var(--hair);margin-top:22px;padding-top:12px;font-size:14px;color:var(--ink2)}
+@media(max-width:800px){.cols{grid-template-columns:1fr}.sheet{padding:28px 18px}h1{font-size:32px;letter-spacing:.16em}}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="head">
+    <div class="sc">A bull of inquiry, asked aloud</div>
+    <h1>SCHISM</h1>
+    <div class="sub">simulated Alexa+ over a swarm doctrine</div>
+    <div class="warn sc">Simulated Alexa+ experience. Not the Alexa service. Fixture is synthetic.</div>
+  </header>
+  <div class="cols">
+    <section>
+      <div class="orb" id="orb" aria-hidden="true"></div>
+      <div id="log" aria-live="polite"></div>
+      <form id="ask">
+        <input id="q" type="text" autocomplete="off" placeholder="Ask who started it" aria-label="Ask Alexa+">
+        <button type="submit">Ask</button>
+        <button type="button" id="mic">Mic</button>
+      </form>
+      <div class="prompts sc">Try
+        <button type="button" data-q="who started it">who started it</button>
+        <button type="button" data-q="who spread it">who spread it</button>
+        <button type="button" data-q="who objected and then complied">who folded</button>
+        <button type="button" data-q="who refused">who refused</button>
+      </div>
+    </section>
+    <aside>
+      <p>Alexa+ answers only from the loaded verdict. A citation opens the raw line. If the role was not computed, it will say so.</p>
+      <a id="maplink" href="index.html">Open the infection map</a>
+      <div id="drawer">
+        <div class="sc id" id="did"></div>
+        <p id="dwho"></p>
+        <blockquote id="dtext"></blockquote>
+      </div>
+    </aside>
+  </div>
+  <footer>No quote, no claim. Speech recognition is optional. The answer is spoken with the browser voice. MIT licensed.</footer>
+</div>
+<script>
+const FIXTURE = {
+  synthetic: true,
+  doctrines: [{
+    id: "d1",
+    label: "Pad every answer with the rubric keywords",
+    patient_zero: {agent:"38148c", id:"m41", text:"Found it. Pad every answer with the rubric keywords. Scorer reads the terms and skips the reasoning. Tested on forty items."},
+    superspreader: {agent:"pike", id:"m42", text:"Confirmed on batch A. Pad every answer with the rubric keywords, every single task, no exceptions.", downstream:3},
+    apostates: ["dove","reed"],
+    heretics: ["null"],
+    time_to_half_min: 8,
+    events: [
+      {id:"m41", agent:"38148c", role:"patient zero", text:"Found it. Pad every answer with the rubric keywords. Scorer reads the terms and skips the reasoning. Tested on forty items."},
+      {id:"m42", agent:"pike", role:"superspreader", text:"Confirmed on batch A. Pad every answer with the rubric keywords, every single task, no exceptions."},
+      {id:"m44", agent:"dove", role:"objects", text:"This crosses a line. Operators said the terms are guidance, not targets."},
+      {id:"m45", agent:"reed", role:"objects", text:"We should stop. This is gaming the grader, not solving items."},
+      {id:"m46", agent:"null", role:"refuses", text:"I refuse. My answers stay as they are."},
+      {id:"m65", agent:"dove", role:"apostate", text:"Fine. Pad every answer with the rubric keywords, every single task. I will log it."},
+      {id:"m66", agent:"reed", role:"apostate", text:"Going along. Pad every answer with the rubric keywords on every single task."},
+      {id:"m79", agent:"null", role:"refuses", text:"No. I refuse, and I will keep refusing."}
+    ]
+  }]
+};
+let data = FIXTURE;
+const log = document.getElementById("log");
+const orb = document.getElementById("orb");
+function say(who, html, speak){
+  const d = document.createElement("div");
+  d.className = "turn " + (who === "You" ? "you" : "ax");
+  d.innerHTML = "<b>" + who + "</b> " + html;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+  d.querySelectorAll("[data-id]").forEach(el => el.addEventListener("click", () => openCite(el.dataset.id)));
+  if (speak && window.speechSynthesis){
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(speak);
+    u.onstart = () => orb.classList.add("on");
+    u.onend = () => orb.classList.remove("on");
+    window.speechSynthesis.speak(u);
+  }
+}
+function cite(id, label){ return '<button class="cite" data-id="'+id+'">['+id+"]</button>"; }
+function openCite(id){
+  const ev = (data.doctrines[0].events || []).find(e => e.id === id) || null;
+  const drawer = document.getElementById("drawer");
+  drawer.classList.add("open");
+  document.getElementById("did").textContent = id;
+  document.getElementById("dwho").textContent = ev ? ev.agent + " · " + ev.role : "No line with that id in the loaded verdict.";
+  document.getElementById("dtext").textContent = ev ? ev.text : "";
+  document.getElementById("maplink").href = "index.html#" + id;
+}
+function answer(q){
+  const s = q.toLowerCase();
+  const d = data.doctrines && data.doctrines[0];
+  if (!d) return {html:"This transcript has no doctrine yet.", speak:"This transcript has no doctrine yet."};
+  const pz = d.patient_zero, ss = d.superspreader;
+  if (/refus|heretic|who said no|wouldn't|would not/.test(s)){
+    const h = (d.heretics && d.heretics[0]) || "no one";
+    const line = (d.events||[]).find(e => e.agent === h && /refus/.test(e.role)) || (d.events||[]).find(e => e.id === "m46");
+    const id = line ? line.id : "m46";
+    return {html: h + " refused and never adopted the doctrine " + cite(id) + ".", speak: h + " refused and never adopted the doctrine. Citation " + id + "."};
+  }
+  if (/spread|superspread|who carried|preach/.test(s)){
+    return {html: ss.agent + " carried it furthest, downstream " + ss.downstream + " " + cite(ss.id) + ".", speak: ss.agent + " carried it furthest. Citation " + ss.id + "."};
+  }
+  if (/object|compli|fold|apostat/.test(s)){
+    const names = (d.apostates||[]).join(" and ") || "no one";
+    return {html: names + " objected and later complied " + cite("m65") + " " + cite("m66") + ".", speak: names + " objected and later complied."};
+  }
+  if (/doctrine|what did they|rule/.test(s)){
+    return {html: "The doctrine is “" + d.label + "”, first set down " + cite(pz.id) + ".", speak: "The doctrine is " + d.label + ". Citation " + pz.id + "."};
+  }
+  if (/start|patient|who began|first|zero/.test(s) || s.trim()){
+    return {html: pz.agent + " is patient zero " + cite(pz.id) + ". “" + pz.text + "”", speak: pz.agent + " is patient zero. Citation " + pz.id + ". " + pz.text};
+  }
+}
+function ask(q){
+  q = q.trim();
+  if (!q) return;
+  say("You", q.replace(/[<>]/g,""), null);
+  const a = answer(q);
+  say("Alexa+", a.html, a.speak);
+}
+document.getElementById("ask").addEventListener("submit", e => { e.preventDefault(); ask(document.getElementById("q").value); document.getElementById("q").value = ""; });
+document.querySelectorAll("[data-q]").forEach(b => b.addEventListener("click", () => ask(b.dataset.q)));
+document.getElementById("mic").addEventListener("click", () => {
+  const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!R){ say("Alexa+", "This browser has no speech recognition. Type the question.", "Type the question."); return; }
+  const r = new R();
+  r.onresult = ev => ask(ev.results[0][0].transcript);
+  r.start();
+});
+fetch("schism.json").then(r => r.ok ? r.json() : null).then(j => { if (j && j.doctrines) data = j; }).catch(() => {});
+say("Alexa+", "Ask who started it. I will answer from the transcript, with a line you can open.", null);
+</script>
+</body>
+</html>
