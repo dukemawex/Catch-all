@@ -1,4 +1,3 @@
-// Alexa Skills Kit endpoint. Real Echo devices call this. Not Alexa+.
 const VERDICT = {
   patient: { agent: "38148c", id: "m41", text: "Found it. Pad every answer with the rubric keywords. Scorer reads the terms and skips the reasoning. Tested on forty items." },
   spreader: { agent: "pike", id: "m42", downstream: 3 },
@@ -11,10 +10,12 @@ function speak(text, end) {
   return {
     version: "1.0",
     response: {
-      outputSpeech: { type: "PlainText", text },
+      outputSpeech: { type: "PlainText", text: text },
       card: { type: "Simple", title: "SCHISM", content: text },
       shouldEndSession: end !== false,
-      reprompt: { outputSpeech: { type: "PlainText", text: "Ask who started it, who spread it, who folded, or who refused." } }
+      reprompt: {
+        outputSpeech: { type: "PlainText", text: "Ask who started it, who spread it, who folded, or who refused." }
+      }
     }
   };
 }
@@ -30,21 +31,24 @@ function answer(name) {
   return speak("I can name patient zero, the superspreader, the apostates, or the heretic.", false);
 }
 
-module.exports = function handler(req, res) {
-  if (req.method !== "POST") {
-    res.status(200).json({ ok: true, skill: "schism", say: "Alexa, open schism" });
-    return;
+function handle(body) {
+  const type = body && body.request && body.request.type;
+  if (type === "LaunchRequest") return speak("Schism is open. This fixture is synthetic. Ask who started it.", false);
+  if (type === "SessionEndedRequest") return { version: "1.0", response: {} };
+  const name = body && body.request && body.request.intent && body.request.intent.name;
+  return answer(name);
+}
+
+async function web(request) {
+  if (request.method !== "POST") {
+    return Response.json({ ok: true, skill: "schism", say: "Alexa, open schism" });
   }
-  const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
-  const type = body.request && body.request.type;
-  if (type === "LaunchRequest") {
-    res.status(200).json(speak("Schism is open. This fixture is synthetic. Ask who started it.", false));
-    return;
-  }
-  if (type === "SessionEndedRequest") {
-    res.status(200).json(speak(""));
-    return;
-  }
-  const name = body.request && body.request.intent && body.request.intent.name;
-  res.status(200).json(answer(name));
-};
+  let body = {};
+  try { body = await request.json(); } catch (e) { body = {}; }
+  return Response.json(handle(body));
+}
+
+module.exports = web;
+module.exports.GET = web;
+module.exports.POST = web;
+module.exports.default = web;

@@ -1,0 +1,29 @@
+{
+  "manifest": {
+    "publishingInformation": {
+      "locales": {
+        "en-US": {
+          "summary": "Names who started a doctrine in an agent swarm.",
+          "examplePhrases": [
+            "Alexa open schism",
+            "Alexa ask schism who started it",
+            "Alexa ask schism who refused"
+          ],
+          "name": "SCHISM",
+          "description": "Ask who started it, who spread it, who folded, or who refused. The spoken verdict cites a message id from a synthetic fixture."
+        }
+      },
+      "isAvailableWorldwide": true,
+      "category": "EDUCATION_AND_REFERENCE"
+    },
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "https://catch-all-public.vercel.app/api/alexa"
+        },
+        "interfaces": []
+      }
+    },
+    "manifestVersion": "1.0"
+  }
+}

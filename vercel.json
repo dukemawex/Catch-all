@@ -1,1 +1,5 @@
-{ "cleanUrls": true }
+{
+  "buildCommand": "node scripts/build-vercel.js",
+  "framework": null,
+  "outputDirectory": ".vercel/output/static"
+}
